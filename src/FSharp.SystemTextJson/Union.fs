@@ -174,7 +174,7 @@ type JsonUnionConverter<'T>(options: JsonSerializerOptions, fsOptions: JsonFShar
             let mutable i = 0
             while found.IsNone && i < case.Fields.Length do
                 let field = case.Fields.[i]
-                if reader.ValueTextEquals(field.Name) then
+                if reader.ValueTextEquals(field.Name) || reader.ValueTextEquals(field.Type.Name) then
                     found <- ValueSome (struct (i, field))
                 else
                     i <- i + 1
@@ -306,8 +306,12 @@ type JsonUnionConverter<'T>(options: JsonSerializerOptions, fsOptions: JsonFShar
         let values = case.Dector value
         for i in 0..fields.Length-1 do
             if not (options.IgnoreNullValues && isNull values.[i]) then
-                writer.WritePropertyName(fields.[i].Name)
-                JsonSerializer.Serialize(writer, values.[i], fields.[i].Type, options)
+                let mutable name = fields.[i].Name
+                let typ = fields.[i].Type
+                if name.StartsWith("Item") && typ<>typeof<Int32> && typ<>typeof<bool> && typ<>typeof<string> then
+                    name <- typ.Name
+                writer.WritePropertyName(name)
+                JsonSerializer.Serialize(writer, values.[i], typ, options)
         writer.WriteEndObject()
 
     let writeFieldsAsObject (writer: Utf8JsonWriter) (case: Case) (value: obj) (options: JsonSerializerOptions) =

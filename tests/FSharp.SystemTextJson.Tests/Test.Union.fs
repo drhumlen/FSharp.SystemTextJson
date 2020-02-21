@@ -194,6 +194,22 @@ module NonStruct =
         Assert.Equal("""{"Case":"Bb","Fields":{"Item":32}}""", JsonSerializer.Serialize(Bb 32, adjacentTagNamedFieldsOptions))
         Assert.Equal("""{"Case":"Bc","Fields":{"x":"test","Item2":true}}""", JsonSerializer.Serialize(Bc("test", true), adjacentTagNamedFieldsOptions))
 
+    module AutomaticNames =
+        type Name = {first:string; last:string}
+        type Email = {name:string; domain:string}
+        type BrowserName = string
+        type User =
+            | RegisteredUser of Email * Name
+            | Guest of BrowserName
+        [<Fact>]
+        let ``use name of type instead of Item, Item2, etc.`` () =
+            Assert.Equal("""{"Case":"RegisteredUser","Fields":{"Email":{"name":"foo","domain":"bar.com"},"Name":{"first":"Foo","last":"Bar"}}}""", JsonSerializer.Serialize(RegisteredUser({name="foo"; domain="bar.com"}, {first="Foo"; last="Bar"}), adjacentTagNamedFieldsOptions))
+            Assert.Equal("""{"Case":"Guest","Fields":{"BrowserName":{"name":"foo","domain":"bar.com"},"Name":{"first":"Foo","last":"Bar"}}}""", JsonSerializer.Serialize(Guest("Mozilla Firefox"), adjacentTagNamedFieldsOptions))
+        [<Fact>]
+        let ``deserialize from type name`` () =
+            let json="""{"Case":"RegisteredUser","Fields":{"Email":{"name":"foo","domain":"bar.com"},"Name":{"first":"Foo","last":"Bar"}}}"""
+            Assert.Equal(RegisteredUser({name="foo"; domain="bar.com"}, {first="Foo"; last="Bar"}), JsonSerializer.Deserialize<User>(json, adjacentTagNamedFieldsOptions))
+
     let adjacentTagNamedFieldsTagPolicyOptions = JsonSerializerOptions()
     adjacentTagNamedFieldsTagPolicyOptions.Converters.Add(JsonFSharpConverter(JsonUnionEncoding.AdjacentTag ||| JsonUnionEncoding.NamedFields, unionTagNamingPolicy = JsonNamingPolicy.CamelCase))
 
